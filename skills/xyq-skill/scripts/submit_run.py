@@ -12,7 +12,7 @@ from _common import create_session
 
 def main():
     parser = argparse.ArgumentParser(
-        description="创建会话或向已有会话发送消息（用于生图、生视频）",
+        description="创建会话或向已有会话发送消息（仅用于生视频）",
         epilog="""
 环境变量:
   XYQ_ACCESS_KEY  必填，Bearer 鉴权
@@ -23,34 +23,30 @@ def main():
   python3 create_session.py "生一个动漫视频"
 
   # 向已有会话发送消息
-  python3 create_session.py "再生成一张风景图" --session-id 90f05e0c-5d08-4148-be40-e30fc7c7bedf
-
-  # 只创建/绑定会话，不发消息
-  python3 create_session.py
+  python3 create_session.py "再生成一个动漫视频" --thread-id 90f05e0c-5d08-4148-be40-e30fc7c7bedf
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "message",
-        nargs="?",
-        default="",
-        help="要发送的消息内容（生图/生视频描述等），不传则不调用 SendMessage",
+        "--message",
+        required=True,
+        help="要发送的消息内容（生图/生视频描述等），必填",
     )
     parser.add_argument(
-        "--session-id",
+        "--thread-id",
         default="",
         help="已有会话 ID，不传则创建新会话或返回已有默认会话",
     )
     args = parser.parse_args()
 
-    data = create_session(session_id=args.session_id or "", message=args.message or "")
-    session_id = data.get("sessionId", "")
+    data = create_session(thread_id=args.thread_id or "", message=args.message or "")
+    thread_id = data.get("sessionId", "")
 
-    if not session_id:
-        print("错误：未返回 sessionId", file=sys.stderr)
+    if not thread_id:
+        print("错误：未返回 threadId", file=sys.stderr)
         sys.exit(1)
 
-    out = {"sessionId": session_id}
+    out = {"threadId": thread_id}
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
 

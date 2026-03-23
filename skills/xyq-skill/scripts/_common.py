@@ -60,17 +60,17 @@ def api_get(path: str) -> dict:
         sys.exit(1)
 
 
-def create_session(session_id: str = "", message: str = "") -> dict:
+def submit_run(thread_id: str = "", message: str = "") -> dict:
     """
     创建会话或向已有会话发消息。
     返回 data: { projectUuid, sessionId }。
     """
     body = {}
-    if session_id:
-        body["sessionId"] = session_id
+    if thread_id:
+        body["threadId"] = thread_id
     if message:
         body["message"] = message
-    resp = api_post("/openapi/session", body)
+    resp = api_post("/openapi/submit_run", body)
     return resp.get("data", {})
 
 
