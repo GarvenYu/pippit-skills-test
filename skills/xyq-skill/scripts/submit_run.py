@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""创建会话 / 向会话发送消息（生图、生视频等）：POST /openapi/session"""
+"""创建会话 / 向会话发送消息（生图、生视频等）：POST /api/biz/v1/skill/submit_run"""
 
 import argparse
 import json
@@ -7,7 +7,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _common import create_session
+from _common import submit_run
 
 
 def main():
@@ -20,10 +20,10 @@ def main():
 
 示例:
   # 创建新会话并发送「生一个动漫视频」
-  python3 create_session.py "生一个动漫视频"
+  python3 submit_run.py --message 生一个动漫视频
 
   # 向已有会话发送消息
-  python3 create_session.py "再生成一个动漫视频" --thread-id 90f05e0c-5d08-4148-be40-e30fc7c7bedf
+  python3 submit_run.py --message 再生成一个动漫视频 --thread-id 90f05e0c-5d08-4148-be40-e30fc7c7bedf
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -39,14 +39,14 @@ def main():
     )
     args = parser.parse_args()
 
-    data = create_session(thread_id=args.thread_id or "", message=args.message or "")
-    thread_id = data.get("sessionId", "")
+    data = submit_run(thread_id=args.thread_id or "", message=args.message or "")
+    thread_id = data.get("thread", {}).get("thread_id", "")
 
     if not thread_id:
-        print("错误：未返回 threadId", file=sys.stderr)
+        print("错误：未返回 thread_id", file=sys.stderr)
         sys.exit(1)
 
-    out = {"threadId": thread_id}
+    out = {"thread_id": thread_id}
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
 

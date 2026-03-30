@@ -6,9 +6,12 @@ import sys
 import urllib.request
 import urllib.error
 
-# 默认 im 环境
 XYQ_BASE = os.environ.get("XYQ_OPENAPI_BASE", os.environ.get("XYQ_BASE_URL", "https://xyq.jianying.com"))
 ACCESS_KEY = os.environ.get("XYQ_ACCESS_KEY", "")
+
+# API 路径常量
+SUBMIT_RUN_PATH = "/api/biz/v1/skill/submit_run"
+GET_THREAD_PATH = "/api/biz/v1/skill/get_thread"
 
 if not ACCESS_KEY:
     print("错误：请设置 XYQ_ACCESS_KEY 环境变量", file=sys.stderr)
@@ -19,6 +22,8 @@ def _headers():
     return {
         "Authorization": f"Bearer {ACCESS_KEY}",
         "Content-Type": "application/json",
+        "x-tt-env": "ppe_self_testin_m6ewz0",
+        "x-use-ppe": 1,
     }
 
 
@@ -60,6 +65,20 @@ def api_get(path: str) -> dict:
         sys.exit(1)
 
 
+def parse_response(resp: dict) -> dict:
+    """
+    分析 API 响应。
+    响应结构：{"ret":"0","errmsg":"","data":{}}
+    如果 ret 不是 "0"，打印错误信息并退出；否则返回 data。
+    """
+    ret = resp.get("ret", "")
+    if ret != "0":
+        errmsg = resp.get("errmsg", "未知错误")
+        print(f"错误码: {ret}, 错误信息: {errmsg}", file=sys.stderr)
+        sys.exit(1)
+    return resp.get("data", {})
+
+
 def submit_run(thread_id: str = "", message: str = "") -> dict:
     """
     创建会话或向已有会话发消息。
@@ -67,20 +86,72 @@ def submit_run(thread_id: str = "", message: str = "") -> dict:
     """
     body = {}
     if thread_id:
-        body["threadId"] = thread_id
+        body["thread_id"] = thread_id
     if message:
         body["message"] = message
-    resp = api_post("/openapi/submit_run", body)
-    return resp.get("data", {})
+    resp = api_post(SUBMIT_RUN_PATH, body)
+    return parse_response(resp)
 
 
-def query_session(session_id: str, after_seq: int = 0) -> dict:
+def get_thread(thread_id: str, after_seq: int = 0) -> dict:
     """
     查询会话消息列表。
     返回 data: { messages: [...] }。
     """
-    path = f"/openapi/session/{session_id}"
-    if after_seq > 0:
-        path += f"?afterSeq={after_seq}"
-    resp = api_get(path)
-    return resp.get("data", {})
+    resp = api_post(GET_THREAD_PATH.format(thread_id=thread_id))
+    resp = parse_response(resp)
+    thread = resp.get("thread", {})
+    run_list = thread.get("run_list", [])
+    if len(run_list) == 0:
+        print("错误：未返回 run_list", file=sys.stderr)
+        sys.exit(1)
+    run = run_list[0]
+    run_state = run.get("state", "")
+
+    # 判断 run_state
+    if run_state == 3:
+        # 成功
+        return run
+    elif run_state == 4:
+        # 失败
+        fail_reason = run.get("fail_reason", "未知失败原因")
+        print(f"错误：{fail_reason}", file=sys.stderr)
+        sys.exit(1)
+    elif run_state == 5:
+        # 取消
+        print("错误：创作已被终止", file=sys.stderr)
+        sys.exit(1)
+    else:
+        print("创作进行中", file=sys.stdout)
+
+
+def get_video_url_from_entry(run: dict) -> str:
+    """
+    从 Run 的 EntryList 中提取视频下载链接
+    """
+    entry_list = run.get("entry_list", [])
+    for entry in entry_list:
+        artifact = entry.get("artifact")
+        if not artifact:
+            continue
+
+        content = artifact.get("content", [])
+        for part in content:
+            # 检查 part 类型
+            if part.get("type") != "data" or part.get("sub_type") != "biz/x_data_video":
+                continue
+
+            # 解析 video part
+            try:
+                data_str = part.get("data", "")
+                if not data_str:
+                    continue
+                video_part = json.loads(data_str)
+                video = video_part.get("video", {})
+                download_url = video.get("download_url", "")
+                if download_url:
+                    return download_url
+            except json.JSONDecodeError:
+                continue
+
+    return ""

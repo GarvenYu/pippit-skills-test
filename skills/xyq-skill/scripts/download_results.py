@@ -11,7 +11,7 @@ import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _common import query_session
+from _common import get_thread
 
 
 def extract_urls_from_messages(messages):
@@ -100,7 +100,7 @@ def main():
     # 收集 URL
     urls = list(args.urls)
     if args.session_id:
-        data = query_session(args.session_id)
+        data = get_thread(args.session_id)
         messages = data.get("messages", [])
         extracted = extract_urls_from_messages(messages)
         urls.extend(extracted)
