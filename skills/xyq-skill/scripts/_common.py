@@ -150,8 +150,8 @@ def get_video_url_from_entry(run: dict) -> str:
                 video = video_part.get("video", {})
                 download_url = video.get("download_url", "")
                 if download_url:
-                    return download_url
+                    return f"视频创作完成，下载链接：{download_url}"
             except json.JSONDecodeError:
                 continue
 
-    return ""
+    return "视频创作中，等待结果输出"

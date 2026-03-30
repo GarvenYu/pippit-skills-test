@@ -38,7 +38,7 @@ def main():
     last_run = get_thread(args.thread_id)
     # 从run中提取视频url
     video_url = get_video_url_from_entry(last_run)
-    out = {"video_url": video_url}
+    out = {"result": video_url}
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
 
