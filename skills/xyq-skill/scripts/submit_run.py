@@ -40,7 +40,7 @@ def main():
     args = parser.parse_args()
 
     data = submit_run(thread_id=args.thread_id or "", message=args.message or "")
-    thread_id = data.get("thread", {}).get("thread_id", "")
+    thread_id = data.get("run", {}).get("thread_id", "")
 
     if not thread_id:
         print("错误：未返回 thread_id", file=sys.stderr)
