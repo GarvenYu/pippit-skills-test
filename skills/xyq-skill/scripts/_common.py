@@ -123,6 +123,7 @@ def get_thread(thread_id: str, after_seq: int = 0) -> dict:
         sys.exit(1)
     else:
         print("创作进行中", file=sys.stdout)
+        return run
 
 
 def get_video_url_from_entry(run: dict) -> str:
@@ -153,5 +154,4 @@ def get_video_url_from_entry(run: dict) -> str:
                     return f"视频创作完成，下载链接：{download_url}"
             except json.JSONDecodeError:
                 continue
-
     return "视频创作中，等待结果输出"
