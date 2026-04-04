@@ -85,7 +85,7 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 
 ```
 1. submit_run.py --message "用户的描述"  →  拿到 thread_id
-2. 每隔 `10` 秒钟调用 get_thread.py --thread-id THREAD_ID
+2. 每隔 `30` 秒钟调用 get_thread.py --thread-id THREAD_ID
 3. 检查 messages：当创作任务完成且包含视频 URL → 任务完成
 4. 向用户展示：视频结果 URL
 ```
@@ -119,7 +119,7 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 
 - **间隔**：每 10 秒查询一次
 - **完成判断**：当创作任务完成且包含结果 URL（图片/视频地址）
-- **超时**：连续轮询 60 分钟仍无结果，告知用户"生成时间较长，可稍后查看"，不再继续轮询
+- **超时**：连续轮询 `48 小时`仍无结果，告知用户"生成时间较长，可稍后查看"，不再继续轮询
 - **错误重试**：单次查询失败可重试 1 次，连续 3 次失败则停止并告知用户
 
 ## 输出格式
