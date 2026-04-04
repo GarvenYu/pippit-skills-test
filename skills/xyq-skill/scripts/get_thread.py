@@ -25,7 +25,11 @@ def main():
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("thread_id", help="会话 ID（由 submit_run 返回）")
+    parser.add_argument(
+        "--thread-id",
+        required=True,
+        help="会话 ID（由 submit_run 返回）",
+    )
     # parser.add_argument(
     #     "--after-seq",
     #     type=int,

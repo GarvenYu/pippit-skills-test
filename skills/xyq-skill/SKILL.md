@@ -62,7 +62,7 @@ python3 {baseDir}/scripts/submit_run.py --message "再生成一个故事视频" 
 
 ```bash
 # 查询会话消息列表
-python3 {baseDir}/scripts/get_thread.py THREAD_ID
+python3 {baseDir}/scripts/get_thread.py --thread-id THREAD_ID
 ```
 
 ### 3. 上传文件
@@ -85,7 +85,7 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 
 ```
 1. submit_run.py --message "用户的描述"  →  拿到 thread_id
-2. 每隔 `10` 秒钟调用 get_thread.py THREAD_ID
+2. 每隔 `10` 秒钟调用 get_thread.py --thread-id THREAD_ID
 3. 检查 messages：当创作任务完成且包含视频 URL → 任务完成
 4. 向用户展示：视频结果 URL
 ```
