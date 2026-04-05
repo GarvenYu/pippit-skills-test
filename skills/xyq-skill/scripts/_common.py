@@ -96,12 +96,15 @@ def submit_run(thread_id: str = "", message: str = "", asset_ids: list = None) -
     return parse_response(resp)
 
 
-def get_thread(thread_id: str, after_seq: int = 0) -> dict:
+def get_thread(thread_id: str) -> dict:
     """
     查询会话消息列表。
     返回 data: { messages: [...] }。
     """
-    resp = api_post(GET_THREAD_PATH.format(thread_id=thread_id))
+    body = {}
+    if thread_id:
+        body["thread_id"] = thread_id
+    resp = api_post(GET_THREAD_PATH, body)
     resp = parse_response(resp)
     thread = resp.get("thread", {})
     run_list = thread.get("run_list", [])
