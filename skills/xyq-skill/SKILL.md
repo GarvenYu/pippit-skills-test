@@ -34,7 +34,7 @@ metadata:
 
 1. **创建会话 / 发消息** - 创建新会话或向已有会话发送一条消息（如「创作一个视频」）
 2. **查询会话进展** - 根据 `thread_id` 拉取该会话的消息列表，用于轮询生视频结果
-3. **上传文件** - 上传图片或视频文件到 OSS，返回可访问的 OSS 地址（编辑已有视频/图片时需要先上传）
+3. **上传文件** - 支持上传`单张图片`或`单个视频文件`到小云雀资产库，得到文件对应的 `asset_id`（编辑已有视频/图片时需要先上传）
 
 ## 前置要求
 
@@ -67,7 +67,8 @@ python3 {baseDir}/scripts/get_thread.py --thread-id THREAD_ID
 
 ### 3. 上传文件
 
-当用户提供了参考的文件地址时，进行上传，仅支持图片、视频，文件大小必须在200M以下。
+- 当用户提供了参考的文件地址时，先进行文件上传，仅支持图片、视频。
+- 单次指令执行仅支持单个文件，多个文件可并行调用，单个文件大小必须在200MB以下。
 
 ```bash
 # 上传图片
@@ -93,31 +94,33 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 ### 场景 2：用户提供图片/视频要求编辑修改（如"参考这个视频做一个新的"）
 
 ```
-1. upload_file.py /path/to/video.mp4  →  拿到 OSS URL
-2. submit_run.py --message "参考这个视频做一个新的"
+1. upload_file.py /path/to/video.mp4  →  拿到 asset_id
+2. submit_run.py --message "参考这个视频做一个新的" --asset-ids asset_id
 3. 后续同场景 1 的步骤 2-4
 ```
 
-用户给了文件路径 + 编辑指令 = 先上传文件，再把编辑指令和 OSS URL 一起发送。
+用户给了文件路径 + 编辑指令 = 先上传文件，再把编辑指令和 所有asset_id 一起发送。
 
 ### 场景 3：用户提供参考图/视频要求生成新内容
 
 ```
-1. upload_file.py /path/to/ref.png  →  拿到 OSS URL
-2. submit_run.py --message "根据参考图生成xxx，参考图：{oss_url}"
-3. 后续同场景 1 的步骤 2-4
+1. upload_file.py /path/to/ref1.png  →  拿到 asset_id1
+2. upload_file.py /path/to/ref2.mp4  →  拿到 asset_id2
+3. 直到所有文件上传完成，拿到所有 asset_id
+4. submit_run.py --message "根据参考图、视频生成xxx" --asset-ids asset_id1 asset_id2, ...
+5. 后续同场景 1 的步骤 2-4
 ```
 
 ### 场景 4：在已有会话中追加新需求
 
 ```
-1. submit_run.py --message "新的描述" --thread-id THREAD_ID
+1. submit_run.py --message "新的描述"
 2. 后续同场景 1 的步骤 2-4
 ```
 
 ### 轮询策略
 
-- **间隔**：每 10 秒查询一次
+- **间隔**：每 30 秒查询一次
 - **完成判断**：当创作任务完成且包含结果 URL（图片/视频地址）
 - **超时**：连续轮询 `48 小时`仍无结果，告知用户"生成时间较长，可稍后查看"，不再继续轮询
 - **错误重试**：单次查询失败可重试 1 次，连续 3 次失败则停止并告知用户
@@ -141,7 +144,7 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 **upload_file** 返回：
 ```json
 {
-  "url": "{oss_url}"
+  "asset_id": "{asset_id}"
 }
 ```
 
@@ -155,13 +158,12 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 
 你（用户侧 Agent）的职责是**搬运工**，不是创作者。后端有专门的 Agent 负责理解需求、拆解分镜、编排工作流、选模型、写 prompt。你要做的只有三件事：
 
-1. **上传**：如果用户给了本地文件 → `upload_file.py` 拿到 OSS URL
-2. **传话**：把用户的原始描述 + OSS URL 原封不动发给 `submit_run.py`
+1. **上传**：如果用户给了本地文件 → `upload_file.py` 拿到 asset_id
+2. **传话**：把用户的原始描述 + asset_id 原封不动发给 `submit_run.py`
 3. **取件**：`get_thread.py` 轮询结果 → 检查结果 → 结果展示给用户
 
 **绝对不要做的事：**
 - 不要替用户扩写、润色、翻译 prompt（用户说"帮我推演分镜"，就直接传"帮我推演分镜"，不要自己先写个分镜表再逐条发）
-- 不要自行拆解任务步骤（如把"生成9张分镜图"拆成9次独立请求）
 - 不要自行编排镜头描述、剧情推演、风格分析
 - 不要在消息中添加自己编的 prompt（如"超写实风格，电影级光影，8K分辨率"之类的描述词）
 
@@ -169,11 +171,13 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 
 **正确示例：**
 ```
-用户说：「根据参考图，做个科普故事视频」
-用户给了参考图：/path/to/ref.png
+用户说：「根据多张参考图，做个科普故事视频」
+用户给了参考图：/path/to/ref1.png, /path/to/ref2.png, /path/to/ref3.png
 
-→ upload_file.py /path/to/ref.png  →  拿到 oss_url
-→ submit_run.py --message "根据参考图生成xxx，参考图：{oss_url}"
+→ upload_file.py /path/to/ref1.png →  拿到 asset_id1
+→ upload_file.py /path/to/ref2.png →  拿到 asset_id2
+→ upload_file.py /path/to/ref3.png →  拿到 asset_id3
+→ submit_run.py --message "根据参考图、视频生成xxx" --asset-ids asset_id1 asset_id2, asset_id3
 → 轮询 → 展示
 ```
 

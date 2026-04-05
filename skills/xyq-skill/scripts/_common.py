@@ -12,6 +12,7 @@ ACCESS_KEY = os.environ.get("XYQ_ACCESS_KEY", "")
 # API 路径常量
 SUBMIT_RUN_PATH = "/api/biz/v1/skill/submit_run"
 GET_THREAD_PATH = "/api/biz/v1/skill/get_thread"
+UPLOAD_FILE_PATH = "/api/biz/v1/skill/upload_file"
 
 if not ACCESS_KEY:
     print("错误：请设置 XYQ_ACCESS_KEY 环境变量", file=sys.stderr)
@@ -79,7 +80,7 @@ def parse_response(resp: dict) -> dict:
     return resp.get("data", {})
 
 
-def submit_run(thread_id: str = "", message: str = "") -> dict:
+def submit_run(thread_id: str = "", message: str = "", asset_ids: list = None) -> dict:
     """
     创建会话或向已有会话发消息。
     返回 data: { projectUuid, sessionId }。
@@ -89,6 +90,8 @@ def submit_run(thread_id: str = "", message: str = "") -> dict:
         body["thread_id"] = thread_id
     if message:
         body["message"] = message
+    if asset_ids:
+        body["asset_ids"] = asset_ids
     resp = api_post(SUBMIT_RUN_PATH, body)
     return parse_response(resp)
 

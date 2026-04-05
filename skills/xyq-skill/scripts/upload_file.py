@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""上传图片/视频到 OSS：POST /openapi/upload（multipart/form-data）"""
+"""上传图片/视频到小云雀资产库：POST /api/biz/v1/skill/upload_file（multipart/form-data）"""
 
 import argparse
 import json
@@ -11,7 +11,7 @@ import urllib.request
 import urllib.error
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _common import XYQ_BASE, ACCESS_KEY
+from _common import XYQ_BASE, ACCESS_KEY, UPLOAD_FILE_PATH, parse_response
 
 # 允许的 MIME 类型前缀
 ALLOWED_PREFIXES = ("image/", "video/")
@@ -19,8 +19,8 @@ ALLOWED_PREFIXES = ("image/", "video/")
 
 def upload_file(file_path: str) -> dict:
     """
-    上传本地文件到 agent-im OSS。
-    返回 data: { url }。
+    上传本地文件到小云雀资产库。
+    返回 data: { asset_id: str }。
     """
     if not os.path.isfile(file_path):
         print(f"错误：文件不存在: {file_path}", file=sys.stderr)
@@ -59,7 +59,7 @@ def upload_file(file_path: str) -> dict:
 
     data = b"".join(body_parts)
 
-    url = f"{XYQ_BASE.rstrip('/')}/openapi/upload"
+    url = f"{XYQ_BASE.rstrip('/')}{UPLOAD_FILE_PATH}"
     req = urllib.request.Request(
         url,
         data=data,
@@ -72,7 +72,7 @@ def upload_file(file_path: str) -> dict:
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             result = json.loads(resp.read().decode("utf-8"))
-            return result.get("data", {})
+            return parse_response(result)
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8") if e.fp else ""
         print(f"API 错误 {e.code}: {err_body}", file=sys.stderr)
@@ -84,7 +84,7 @@ def upload_file(file_path: str) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="上传图片或视频文件到 OSS",
+        description="上传图片或视频文件到小云雀资产库",
         epilog="""
 环境变量:
   XYQ_ACCESS_KEY  必填，Bearer 鉴权
@@ -106,13 +106,13 @@ def main():
     args = parser.parse_args()
 
     data = upload_file(args.file)
-    oss_url = data.get("url", "")
+    asset_id = data.get("asset_id", "")
 
-    if not oss_url:
-        print("错误：未返回 OSS 地址", file=sys.stderr)
+    if not asset_id:
+        print("错误：未返回 asset_id", file=sys.stderr)
         sys.exit(1)
 
-    out = {"url": oss_url}
+    out = {"asset_id": asset_id}
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
 

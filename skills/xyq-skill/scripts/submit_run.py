@@ -24,6 +24,12 @@ def main():
 
   # 向已有会话发送消息
   python3 submit_run.py --message 再生成一个动漫视频 --thread-id 90f05e0c-5d08-4148-be40-e30fc7c7bedf
+
+  # 传入文件资产 ID
+  python3 submit_run.py --message 生成视频 --asset-ids asset123
+
+  # 传入多个文件资产 ID
+  python3 submit_run.py --message 生成视频 --asset-ids asset123 asset456 asset789
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -37,9 +43,19 @@ def main():
         default="",
         help="已有会话 ID，不传则创建新会话或返回已有默认会话",
     )
+    parser.add_argument(
+        "--asset-ids",
+        nargs="+",
+        default=[],
+        help="资产 ID 列表，可传入多个，例如：--asset-ids id1 id2 id3",
+    )
     args = parser.parse_args()
 
-    data = submit_run(thread_id=args.thread_id or "", message=args.message or "")
+    data = submit_run(
+        thread_id=args.thread_id or "",
+        message=args.message or "",
+        asset_ids=args.asset_ids if args.asset_ids else None
+    )
     thread_id = data.get("run", {}).get("thread_id", "")
 
     if not thread_id:
