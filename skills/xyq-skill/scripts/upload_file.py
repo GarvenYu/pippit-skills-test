@@ -66,9 +66,7 @@ def upload_file(file_path: str) -> dict:
         method="POST",
         headers={
             "Authorization": f"Bearer {ACCESS_KEY}",
-            "Content-Type": f"multipart/form-data; boundary={boundary}",
-            "x-tt-env": "ppe_self_testin_m6ewz0",
-            "x-use-ppe": 1,
+            "Content-Type": f"multipart/form-data; boundary={boundary}"
         },
     )
     try:
