@@ -33,7 +33,7 @@ metadata:
 ## 功能
 
 1. **创建会话 / 发消息** - 创建新会话或向已有会话发送一条消息（如「创作一个视频」）
-2. **查询会话进展** - 根据 `thread_id` 拉取该会话的消息列表，用于轮询生视频结果
+2. **查询会话进展** - 根据 `thread_id` 和 `run_id` 拉取该会话的消息列表，用于轮询生视频结果
 3. **上传文件** - 支持上传`单张图片`或`单个视频文件`到小云雀资产库，得到文件对应的 `asset_id`（编辑已有视频/图片时需要先上传）
 
 ## 前置要求
@@ -62,8 +62,10 @@ python3 {baseDir}/scripts/submit_run.py --message "再生成一个故事视频" 
 
 ```bash
 # 查询会话消息列表
-python3 {baseDir}/scripts/get_thread.py --thread-id THREAD_ID
+python3 {baseDir}/scripts/get_thread.py --thread-id THREAD_ID --run-id RUN_ID
 ```
+
+> `run_id` 由 `submit_run` 返回，用于指定查询某次具体运行的结果。
 
 ### 3. 上传文件
 
@@ -85,8 +87,8 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 ### 场景 1：用户要求生成视频（最常见）
 
 ```
-1. submit_run.py --message "用户的描述"  →  拿到 thread_id
-2. 每隔 `30` 秒钟调用 get_thread.py --thread-id THREAD_ID
+1. submit_run.py --message "用户的描述"  →  拿到 thread_id 和 run_id
+2. 每隔 `30` 秒钟调用 get_thread.py --thread-id THREAD_ID --run-id RUN_ID
 3. 检查 messages：当创作任务完成且包含视频 URL → 任务完成
 4. 向用户展示：视频结果 URL
 ```
@@ -130,7 +132,8 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 **submit_run** 返回：
 ```json
 {
-  "thread_id": "90f05e0c-..."
+  "thread_id": "90f05e0c-...",
+  "run_id": "abc123-..."
 }
 ```
 

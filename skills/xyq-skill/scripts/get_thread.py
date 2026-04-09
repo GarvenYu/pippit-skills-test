@@ -30,6 +30,11 @@ def main():
         required=True,
         help="会话 ID（由 submit_run 返回）",
     )
+    parser.add_argument(
+        "--run-id",
+        default="",
+        help="运行 ID（由 submit_run 返回）",
+    )
     # parser.add_argument(
     #     "--after-seq",
     #     type=int,
@@ -39,7 +44,7 @@ def main():
     args = parser.parse_args()
 
     # data = get_thread(args.session_id, after_seq=args.after_seq)
-    last_run = get_thread(args.thread_id)
+    last_run = get_thread(args.thread_id, run_id=args.run_id)
     # 从run中提取视频url
     video_url = get_video_url_from_entry(last_run)
     out = {"result": video_url}
