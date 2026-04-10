@@ -63,6 +63,9 @@ def main():
     if not thread_id:
         print("错误：未返回 thread_id", file=sys.stderr)
         sys.exit(1)
+    if not run_id:
+        print("错误：未返回 run_id", file=sys.stderr)
+        sys.exit(1)
 
     out = {"thread_id": thread_id, "run_id": run_id}
     print(json.dumps(out, ensure_ascii=False, indent=2))

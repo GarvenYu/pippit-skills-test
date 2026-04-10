@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """查询会话进展：POST /api/biz/v1/skill/get_thread，返回消息列表"""
 
-from _common import get_video_url_from_entry
+from _common import extract_entries_from_run
 import argparse
 import json
 import sys
@@ -20,8 +20,7 @@ def main():
   XYQ_OPENAPI_BASE 或 XYQ_BASE_URL  可选，默认 https://xyq.jianying.com
 
 示例:
-  python3 get_thread.py 90f05e0c-5d08-4148-be40-e30fc7c7bedf
-  python3 get_thread.py 90f05e0c-5d08-4148-be40-e30fc7c7bedf
+  python3 get_thread.py --thread-id abc123 --run-id def456 --after-seq 0
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -35,19 +34,18 @@ def main():
         default="",
         help="运行 ID（由 submit_run 返回）",
     )
-    # parser.add_argument(
-    #     "--after-seq",
-    #     type=int,
-    #     default=0,
-    #     help="只返回 seq 大于该值的消息，用于增量拉取（默认 0）",
-    # )
+    parser.add_argument(
+        "--after-seq",
+        type=int,
+        default=0,
+        help="只返回 seq 大于等于该值的消息，用于增量拉取（默认 0）",
+    )
     args = parser.parse_args()
 
-    # data = get_thread(args.session_id, after_seq=args.after_seq)
-    last_run = get_thread(args.thread_id, run_id=args.run_id)
-    # 从run中提取视频url
-    video_url = get_video_url_from_entry(last_run)
-    out = {"result": video_url}
+    run = get_thread(args.thread_id, run_id=args.run_id, after_seq=args.after_seq)
+    # 从run中提取Message和Artifact
+    entries = extract_entries_from_run(run)
+    out = {"messages": entries}
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
 
