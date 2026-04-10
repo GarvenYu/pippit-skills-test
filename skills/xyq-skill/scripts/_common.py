@@ -141,7 +141,7 @@ def extract_entries_from_run(run: dict) -> list:
     从 Run 的 EntryList 中提取符合条件的 entry。
     """
     matched = []
-    for entry in run.get("entry_list", []):
+    for entry in run.get("entry_list") or []:
         e = {}
         message = entry.get("message")
         artifact = entry.get("artifact")

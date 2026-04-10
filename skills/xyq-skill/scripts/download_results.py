@@ -40,22 +40,32 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--urls", nargs="+", required=True, help="直接指定要下载的 URL 列表")
-    parser.add_argument("--output-dir", default="", help="输出目录（默认 ./xyq_download_results）")
+    parser.add_argument("--output-dir", default="", help="输出目录（默认 ./xyq_output")
     parser.add_argument("--prefix", default="", help="文件名前缀（如 'storyboard' → storyboard_01.png）")
     parser.add_argument("--workers", type=int, default=5, help="并行下载线程数（默认 5）")
     args = parser.parse_args()
     
     # 准备输出目录
-    output_dir = args.output_dir or "./xyq_download_results"
+    output_dir = args.output_dir or "./xyq_output"
     os.makedirs(output_dir, exist_ok=True)
+
+    def _get_ext(url):
+        """从 URL 中提取文件扩展名，优先从 query 的 filename 参数取，其次从路径取"""
+        from urllib.parse import urlparse, parse_qs
+        parsed = urlparse(url)
+        qs = parse_qs(parsed.query)
+        filenames = qs.get("filename", [])
+        if filenames:
+            _, ext = os.path.splitext(filenames[0])
+            if ext:
+                return ext
+        _, ext = os.path.splitext(parsed.path)
+        return ext or ".bin"
 
     # 构建下载任务
     tasks = []
     for i, url in enumerate(args.urls, 1):
-        path = url.split("?")[0]
-        _, ext = os.path.splitext(path)
-        if not ext:
-            ext = ".bin"
+        ext = _get_ext(url)
         if args.prefix:
             filename = f"{args.prefix}_{i:02d}{ext}"
         else:
