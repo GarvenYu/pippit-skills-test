@@ -4,7 +4,6 @@
 import argparse
 import json
 import os
-import re
 import sys
 import urllib.request
 import urllib.error
@@ -15,17 +14,18 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 def download_file(url, filepath):
     """下载单个文件"""
+    import shutil
     req = urllib.request.Request(url, headers={"User-Agent": "XYQ-Skill/1.0"})
+    tmp_path = filepath + ".tmp"
     try:
         with urllib.request.urlopen(req, timeout=600) as resp:
-            with open(filepath, "wb") as f:
-                while True:
-                    chunk = resp.read(8192)
-                    if not chunk:
-                        break
-                    f.write(chunk)
+            with open(tmp_path, "wb") as f:
+                shutil.copyfileobj(resp, f, length=1024 * 1024)
+        os.replace(tmp_path, filepath)
         return filepath, None
     except Exception as e:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
         return filepath, str(e)
 
 
@@ -44,22 +44,18 @@ def main():
     parser.add_argument("--prefix", default="", help="文件名前缀（如 'storyboard' → storyboard_01.png）")
     parser.add_argument("--workers", type=int, default=5, help="并行下载线程数（默认 5）")
     args = parser.parse_args()
-
-    # 收集 URL
-    urls = list(args.urls)
-
-    if not urls:
-        print(json.dumps({"error": "未找到可下载的图片/视频 URL", "downloaded": []}, ensure_ascii=False, indent=2))
-        sys.exit(1)
-
+    
     # 准备输出目录
-    output_dir = args.output_dir or os.path.expanduser("~/Downloads/xyq_results")
+    output_dir = args.output_dir or os.path.expanduser("~/Downloads/xyq_download_results")
     os.makedirs(output_dir, exist_ok=True)
 
     # 构建下载任务
     tasks = []
-    for i, url in enumerate(urls, 1):
-        ext = os.path.splitext(url.split("?")[0])[-1] or ".png"
+    for i, url in enumerate(args.urls, 1):
+        path = url.split("?")[0]
+        _, ext = os.path.splitext(path)
+        if not ext:
+            ext = ".bin"
         if args.prefix:
             filename = f"{args.prefix}_{i:02d}{ext}"
         else:
