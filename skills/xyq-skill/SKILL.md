@@ -35,6 +35,8 @@ metadata:
 1. **创建会话 / 发消息** - 创建新会话或向已有会话发送一条消息（如「创作一个视频」）
 2. **查询会话进展** - 根据 `thread_id` 、 `run_id`、`after_seq` 增量拉取该会话的消息列表，用于轮询最终产物结果
 3. **上传文件** - 支持上传`单张图片`或`单个视频文件`到小云雀资产库，得到文件对应的 `asset_id`（编辑已有视频/图片时需要先上传）
+4. **下载结果** - 将会话中生成的图片/视频批量下载到本地，支持指定输出目录和文件名前缀。
+
 
 ## 前置要求
 
@@ -80,6 +82,15 @@ python3 {baseDir}/scripts/upload_file.py /path/to/image.png
 python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 ```
 
+### 4. 下载结果
+
+任务完成后，可以将会话中的所有产物批量下载到本地。
+
+```bash
+# 指定 URL 列表，指定输出目录，指定文件名前缀（如 artifact_01.png, artifact_02.png ...）进行下载
+python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir ./output --prefix "artifact"
+```
+
 ## 典型工作流
 
 理解这些工作流，才能正确组合上面的脚本完成用户需求。
@@ -92,7 +103,8 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 3. 检查 messages：
   - 当任务还在创作中，读取`messages`的`content`,将过程创作信息展示给用户
   - 当创作任务完成且content中包含产物 URL → 任务完成
-4. 向用户展示：过程中的创作信息，以及最终产物结果 URL
+4. 自动下载：download_results.py --urls URL1 URL2 URL3 --output-dir ~/Downloads/项目名 --prefix 有意义的前缀
+5. 向用户展示：过程中的创作信息，以及下载后的本地文件列表
 ```
 
 ### 场景 2：用户提供图片/视频要求编辑修改（如"参考这个视频做一个新的"）
@@ -100,7 +112,7 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 ```
 1. upload_file.py /path/to/video.mp4  →  拿到 asset_id
 2. submit_run.py --message "参考这个视频做一个新的" --asset-ids asset_id
-3. 后续同场景 1 的步骤 2-4
+3. 后续同场景 1 的步骤 2-5
 ```
 
 用户给了文件路径 + 编辑指令 = 先上传文件，再把编辑指令和 所有asset_id 一起发送。
@@ -112,14 +124,14 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 2. upload_file.py /path/to/ref2.mp4  →  拿到 asset_id2
 3. 直到所有文件上传完成，拿到所有 asset_id
 4. submit_run.py --message "根据参考图、视频生成xxx" --asset-ids asset_id1 asset_id2, ...
-5. 后续同场景 1 的步骤 2-4
+5. 后续同场景 1 的步骤 2-5
 ```
 
 ### 场景 4：在已有会话中追加新需求
 
 ```
 1. submit_run.py --message "新的描述"
-2. 后续同场景 1 的步骤 2-4
+2. 后续同场景 1 的步骤 2-5
 ```
 
 ### 轮询策略
@@ -170,10 +182,19 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 }
 ```
 
+**download_results** 返回：
+```json
+{
+  "output_dir": "/Users/xxx/Downloads/xyq_results",
+  "downloaded": ["/Users/xxx/Downloads/xyq_results/01.png", "..."],
+  "total": 10
+}
+```
+
 ## 最终向用户展示时
 
 - **结果地址**：来自 `get_thread` 返回的 `messages` 中，若任务创作完成，且包含产物 URL。
-- 在任务完成时，给出**产物结果链接**。
+- 在任务完成时，给出**产物结果链接**和下载的**本地文件列表**。
 
 ## 核心原则：用户侧不做创作，只做传话
 
@@ -181,7 +202,7 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 
 1. **上传**：如果用户给了本地文件 → `upload_file.py` 拿到 asset_id
 2. **传话**：把用户的原始描述 + asset_id 原封不动发给 `submit_run.py`
-3. **取件**：`get_thread.py` 轮询结果 → 检查结果 → 结果展示给用户
+3. **取件**：`get_thread.py` 轮询结果 → 检查结果 → 下载产物 → 结果展示给用户
 
 **绝对不要做的事：**
 - 不要替用户扩写、润色、翻译 prompt（用户说"帮我推演分镜"，就直接传"帮我推演分镜"，不要自己先写个分镜表再逐条发）
@@ -199,7 +220,7 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 → upload_file.py /path/to/ref2.png →  拿到 asset_id2
 → upload_file.py /path/to/ref3.png →  拿到 asset_id3
 → submit_run.py --message "根据参考图、视频生成xxx" --asset-ids asset_id1 asset_id2, asset_id3
-→ 轮询 → 展示
+→ 轮询 → 下载产物 → 展示
 ```
 
 **错误示例：**
@@ -215,4 +236,4 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 - 创建会话时 `message` 是用户的指令要求，不能为空
 - 查询会话时可用 --after-seq 做增量拉取，便于轮询新消息（含 assistant 回复与生图/生视频结果）
 - 上传文件仅支持图片（image/*）和视频（video/*）类型，其他类型会被拒绝，文件大小须在 200MB 以下
-- 生成过程中将过程中的创作信息展示给用户；任务完成后给出**产物结果URL链接**
+- 生成过程中将过程中的创作信息展示给用户；任务完成后给出**产物结果（图片/视频）URL链接**和下载的**本地文件列表**。
