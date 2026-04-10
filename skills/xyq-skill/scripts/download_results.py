@@ -40,13 +40,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--urls", nargs="+", required=True, help="直接指定要下载的 URL 列表")
-    parser.add_argument("--output-dir", default="", help="输出目录（默认 ~/Downloads/xyq_download_results/）")
+    parser.add_argument("--output-dir", default="", help="输出目录（默认 ./xyq_download_results）")
     parser.add_argument("--prefix", default="", help="文件名前缀（如 'storyboard' → storyboard_01.png）")
     parser.add_argument("--workers", type=int, default=5, help="并行下载线程数（默认 5）")
     args = parser.parse_args()
     
     # 准备输出目录
-    output_dir = args.output_dir or os.path.expanduser("~/Downloads/xyq_download_results")
+    output_dir = args.output_dir or "./xyq_download_results"
     os.makedirs(output_dir, exist_ok=True)
 
     # 构建下载任务

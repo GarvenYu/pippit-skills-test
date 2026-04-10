@@ -88,7 +88,7 @@ python3 {baseDir}/scripts/upload_file.py /path/to/video.mp4
 
 ```bash
 # 指定 URL 列表，指定输出目录，指定文件名前缀（如 artifact_01.png, artifact_02.png ...）进行下载
-python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir ./output --prefix "artifact"
+python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir ./xyq_download_results --prefix "artifact"
 ```
 
 ## 典型工作流
