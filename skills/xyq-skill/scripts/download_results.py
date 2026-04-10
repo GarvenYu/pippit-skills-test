@@ -11,55 +11,13 @@ import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _common import get_thread
-
-
-def extract_urls_from_messages(messages):
-    """从会话消息中提取所有图片和视频结果 URL"""
-    urls = []
-    url_pattern = re.compile(r'https://libtv-res\.liblib\.art/[^\s"\'<>]+\.(?:png|jpg|jpeg|webp|mp4|mov|webm)')
-
-    for msg in messages:
-        content = msg.get("content", "")
-        if not content or not isinstance(content, str):
-            continue
-
-        # 从 task_result 中提取（toolmsg 返回的结果）
-        if msg.get("role") == "tool":
-            try:
-                data = json.loads(content)
-                task_result = data.get("task_result", {})
-                for img in task_result.get("images", []):
-                    preview = img.get("previewPath", "")
-                    if preview:
-                        urls.append(preview)
-                for vid in task_result.get("videos", []):
-                    preview = vid.get("previewPath", vid.get("url", ""))
-                    if preview:
-                        urls.append(preview)
-            except (json.JSONDecodeError, AttributeError):
-                pass
-
-        # 从 assistant 文本消息中提取 URL
-        if msg.get("role") == "assistant":
-            found = url_pattern.findall(content)
-            urls.extend(found)
-
-    # 去重保序
-    seen = set()
-    unique = []
-    for u in urls:
-        if u not in seen:
-            seen.add(u)
-            unique.append(u)
-    return unique
 
 
 def download_file(url, filepath):
     """下载单个文件"""
     req = urllib.request.Request(url, headers={"User-Agent": "XYQ-Skill/1.0"})
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=600) as resp:
             with open(filepath, "wb") as f:
                 while True:
                     chunk = resp.read(8192)
@@ -73,25 +31,15 @@ def download_file(url, filepath):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="下载会话中生成的图片/视频到本地",
+        description="根据产物URL，下载生成的产物到本地，支持指定输出目录和文件名前缀",
         epilog="""
 使用方式:
-  # 从会话自动提取并下载所有结果
-  python3 download_results.py SESSION_ID
-
-  # 指定输出目录
-  python3 download_results.py SESSION_ID --output-dir ~/Desktop/my_project
-
-  # 指定文件名前缀
-  python3 download_results.py SESSION_ID --prefix "storyboard"
-
   # 直接下载指定 URL 列表
-  python3 download_results.py --urls URL1 URL2 URL3 --output-dir ./output
+  python3 download_results.py --urls URL1 URL2 URL3 --output-dir ./output --prefix "storyboard"
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("session_id", nargs="?", default="", help="会话 ID，自动提取该会话所有生成结果的 URL")
-    parser.add_argument("--urls", nargs="+", default=[], help="直接指定要下载的 URL 列表（不需要 session_id）")
+    parser.add_argument("--urls", nargs="+", required=True, help="直接指定要下载的 URL 列表")
     parser.add_argument("--output-dir", default="", help="输出目录（默认 ~/Downloads/xyq_results/）")
     parser.add_argument("--prefix", default="", help="文件名前缀（如 'storyboard' → storyboard_01.png）")
     parser.add_argument("--workers", type=int, default=5, help="并行下载线程数（默认 5）")
@@ -99,11 +47,6 @@ def main():
 
     # 收集 URL
     urls = list(args.urls)
-    if args.session_id:
-        data = get_thread(args.session_id)
-        messages = data.get("messages", [])
-        extracted = extract_urls_from_messages(messages)
-        urls.extend(extracted)
 
     if not urls:
         print(json.dumps({"error": "未找到可下载的图片/视频 URL", "downloaded": []}, ensure_ascii=False, indent=2))
