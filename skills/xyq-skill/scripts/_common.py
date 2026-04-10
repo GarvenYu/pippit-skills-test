@@ -22,7 +22,9 @@ if not ACCESS_KEY:
 def _headers():
     return {
         "Authorization": f"Bearer {ACCESS_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "x-tt-env": "ppe_self_testin_rabq7v",
+        "x-use-ppe": 1,
     }
 
 
@@ -94,7 +96,7 @@ def submit_run(thread_id: str = "", message: str = "", asset_ids: list = None) -
     return parse_response(resp)
 
 
-def get_thread(thread_id: str) -> dict:
+def get_thread(thread_id: str, run_id: str = "", after_seq: int = 0) -> dict:
     """
     查询会话消息列表。
     返回 data: { messages: [...] }。
@@ -102,6 +104,9 @@ def get_thread(thread_id: str) -> dict:
     body = {}
     if thread_id:
         body["thread_id"] = thread_id
+    if run_id:
+        body["run_id"] = run_id
+    body["after_seq"] = after_seq
     resp = api_post(GET_THREAD_PATH, body)
     resp = parse_response(resp)
     thread = resp.get("thread", {})
@@ -115,6 +120,7 @@ def get_thread(thread_id: str) -> dict:
     # 判断 run_state
     if run_state == 3:
         # 成功
+        print("成功：本次创作已完成", file=sys.stderr)
         return run
     elif run_state == 4:
         # 失败
@@ -123,39 +129,29 @@ def get_thread(thread_id: str) -> dict:
         sys.exit(1)
     elif run_state == 5:
         # 取消
-        print("错误：创作已被终止", file=sys.stderr)
+        print("错误：本次创作已被终止", file=sys.stderr)
         sys.exit(1)
     else:
-        print("创作进行中", file=sys.stdout)
+        print("本次创作进行中", file=sys.stdout)
         return run
 
 
-def get_video_url_from_entry(run: dict) -> str:
+def extract_entries_from_run(run: dict) -> list:
     """
-    从 Run 的 EntryList 中提取视频下载链接
+    从 Run 的 EntryList 中提取符合条件的 entry。
     """
-    entry_list = run.get("entry_list", [])
-    for entry in entry_list:
+    matched = []
+    for entry in run.get("entry_list", []):
+        e = {}
+        message = entry.get("message")
         artifact = entry.get("artifact")
-        if not artifact:
-            continue
-
-        content = artifact.get("content", [])
-        for part in content:
-            # 检查 part 类型
-            if part.get("type") != "data" or part.get("sub_type") != "biz/x_data_video":
-                continue
-
-            # 解析 video part
-            try:
-                data_str = part.get("data", "")
-                if not data_str:
-                    continue
-                video_part = json.loads(data_str)
-                video = video_part.get("video", {})
-                download_url = video.get("download_url", "")
-                if download_url:
-                    return f"视频创作完成，下载链接：{download_url}"
-            except json.JSONDecodeError:
-                continue
-    return "视频创作中，等待结果输出"
+        if message:
+            e["id"] = message.get("message_id", "")
+            e["role"] = message.get("role", "")
+            e["content"] = message.get("content", [])
+        if artifact:
+            e["id"] = artifact.get("artifact_id", "")
+            e["role"] = artifact.get("role", "")
+            e["content"] = artifact.get("content", [])
+        matched.append(e)
+    return matched
