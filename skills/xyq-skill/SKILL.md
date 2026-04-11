@@ -33,7 +33,7 @@ metadata:
 ## 功能
 
 1. **创建会话 / 发消息** - 创建新会话或向已有会话发送一条消息（如「创作一个视频」）
-2. **查询会话进展** - 根据 `thread_id` 、 `run_id`、`after_seq` 增量拉取该会话的消息列表，用于轮询最终产物结果
+2. **查询会话进展** - 根据 `thread_id` 、 `run_id`、`after_seq` 增量拉取该会话的消息列表，用于轮询创作过程的消息和最终产物结果
 3. **上传文件** - 支持上传`单张图片`或`单个视频文件`到小云雀资产库，得到文件对应的 `asset_id`（编辑已有视频/图片时需要先上传）
 4. **下载结果** - 将会话中生成的图片/视频批量下载到本地，支持指定输出目录和文件名前缀。
 
@@ -68,6 +68,7 @@ python3 {baseDir}/scripts/get_thread.py --thread-id THREAD_ID --run-id RUN_ID --
 ```
 
 > `run_id` 由 `submit_run` 返回，用于指定查询某次具体运行的结果。
+> `after_seq` 用于增量拉取，初始值为 `0`。
 
 ### 3. 上传文件
 
@@ -101,9 +102,16 @@ python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir
 1. submit_run.py --message "用户的描述"  →  拿到 thread_id 和 run_id
 2. 每隔 `10` 秒钟调用 get_thread.py --thread-id THREAD_ID --run-id RUN_ID --after-seq SEQUENCE 进行轮询
 3. 检查 messages：
-  - 当任务还在创作中，读取`messages`的`content`,将过程创作信息展示给用户
-  - 当创作任务完成且content中包含产物 URL → 任务完成
-4. 自动下载：download_results.py --urls URL1 URL2 URL3 --output-dir ~/Downloads/项目名 --prefix 有意义的前缀
+  - 当任务还在创作中：
+    - 将过程创作信息展示给用户，继续轮询
+  - 当任务完成（run 结束）：
+    - 如果涉及意图确认/流程中断（如"请回答以下问题"）：
+      → 向用户展示问题，等待用户回复
+      → 使用 `thread_id` 重新提交任务（保持同一会话，产生新的 run_id）
+      → 回到步骤 2 继续轮询（可能多轮，直到不再意图确认）
+    - 如果 content 中包含产物 URL：
+      → 信息展示 → 下载产物 → 结果展示
+4. 自动下载：download_results.py --urls URL1 URL2 URL3 --output-dir 输出目录 --prefix 有意义的前缀
 5. 向用户展示：过程中的创作信息，以及下载后的本地文件列表
 ```
 
@@ -130,7 +138,7 @@ python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir
 ### 场景 4：在已有会话中追加新需求
 
 ```
-1. submit_run.py --message "新的描述"
+1. submit_run.py --message "新的描述" --thread-id THREAD_ID
 2. 后续同场景 1 的步骤 2-5
 ```
 
@@ -191,18 +199,23 @@ python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir
 }
 ```
 
-## 最终向用户展示时
+## 向用户展示内容
 
-- **结果地址**：来自 `get_thread` 返回的 `messages` 中，若任务创作完成，且包含产物 URL。
-- 在任务完成时，给出**产物结果链接**和下载的**本地文件列表**。
+- 任务在创作中：
+  - 展示过程中的创作信息等，继续轮询
+- 任务完成（run 结束）：
+  - 若涉及意图确认/流程中断（如"请回答以下问题"）→ 展示问题 → 等待用户回复 → 使用同一 `thread_id` 重新提交任务 → 继续轮询（可能多轮）
+  - 若 content 中包含产物 URL：
+  - 结果地址：来自 `get_thread` 返回的 `messages` 中，任务创作完成会包含产物 URL，将产物链接、下载的本地文件等信息告知用户。
 
 ## 核心原则：用户侧不做创作，只做传话
 
 你（用户侧 Agent）的职责是**搬运工**，不是创作者。后端有专门的 Agent 负责理解需求、拆解分镜、编排工作流、选模型、写 prompt。你要做的只有三件事：
 
 1. **上传**：如果用户给了本地文件 → `upload_file.py` 拿到 asset_id
-2. **传话**：把用户的原始描述 + asset_id 原封不动发给 `submit_run.py`
-3. **取件**：`get_thread.py` 轮询结果 → 检查结果 → 下载产物 → 结果展示给用户
+2. **提交任务**：把用户的原始描述 + asset_id 原封不动发给 `submit_run.py`
+3. **传话**：根据 `get_thread.py` 返回的消息列表，展示过程中的意图询问、创作信息等
+4. **取件**：`get_thread.py` 轮询结果 → 检查结果 → 下载产物 → 结果展示给用户
 
 **绝对不要做的事：**
 - 不要替用户扩写、润色、翻译 prompt（用户说"帮我推演分镜"，就直接传"帮我推演分镜"，不要自己先写个分镜表再逐条发）
@@ -220,7 +233,8 @@ python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir
 → upload_file.py /path/to/ref2.png →  拿到 asset_id2
 → upload_file.py /path/to/ref3.png →  拿到 asset_id3
 → submit_run.py --message "根据参考图、视频生成xxx" --asset-ids asset_id1 asset_id2, asset_id3
-→ 轮询 → 下载产物 → 展示
+→ 轮询 ─┬─ 意图确认 → 用户确认 → 使用 thread_id 重新提交 → 继续轮询
+        └─ 无意图确认 → 信息展示 → 下载产物 → 结果展示
 ```
 
 **错误示例：**
