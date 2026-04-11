@@ -193,8 +193,8 @@ python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir
 **download_results** 返回：
 ```json
 {
-  "output_dir": "/Users/xxx/Downloads/xyq_results",
-  "downloaded": ["/Users/xxx/Downloads/xyq_results/01.png", "..."],
+  "output_dir": "./xyq_output",
+  "downloaded": ["./xyq_output/01.png", "..."],
   "total": 10
 }
 ```
