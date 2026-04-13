@@ -145,11 +145,11 @@ def extract_entries_from_run(run: dict) -> list:
         e = {}
         message = entry.get("message")
         artifact = entry.get("artifact")
-        client_tool_calls = entry.get("client_tool_calls", [])
         if message:
             e["id"] = message.get("message_id", "")
             e["role"] = message.get("role", "")
             e["content"] = message.get("content", [])
+            client_tool_calls = message.get("client_tool_calls", [])
             if len(client_tool_calls) > 0:
                 e["content"].extend(client_tool_calls)  
         if artifact:
