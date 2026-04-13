@@ -68,7 +68,6 @@ python3 {baseDir}/scripts/get_thread.py --thread-id THREAD_ID --run-id RUN_ID --
 ```
 
 > `run_id` 由 `submit_run` 返回，用于指定查询某次具体运行的结果。
-> `after_seq` 用于增量拉取，初始值为 `0`。
 
 ### 3. 上传文件
 
@@ -145,8 +144,8 @@ python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir
 ### 轮询策略
 
 - **间隔**：每 10 秒查询一次
-- **增量拉取**：首次用 --after-seq 0，后续用上次拿到的最大 seq 值
-- **完成判断**：当创作任务完成且message的content中包含产物结果 URL（图片/视频地址）
+- **增量拉取**：首次用 --after-seq 0，后续根据messages消息列表长度，计算新的 seq 值
+- **完成判断**：当创作任务完成且messages的content中包含产物结果 URL（图片/视频地址）
 - **超时**：连续轮询 `48 小时`仍无结果，告知用户"生成时间较长，可稍后查看"，不再继续轮询
 - **错误重试**：单次查询失败可重试 1 次，连续 3 次失败则停止并告知用户
 
