@@ -98,9 +98,10 @@ python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir
 ### 场景 1：用户要求生成图片或视频（最常见）
 
 ```
-1. submit_run.py --message "用户的描述"  →  拿到 thread_id 和 run_id
-2. 每隔 `10` 秒钟调用 get_thread.py --thread-id THREAD_ID --run-id RUN_ID --after-seq SEQUENCE 进行轮询
-3. 检查 messages：
+1. submit_run.py --message "用户的描述"  →  拿到 thread_id、run_id 和 web_thread_link
+2. **立即**将 `web_thread_link` 展示给用户（如"任务已提交，可在此查看：{web_thread_link}"）
+3. 每隔 `10` 秒钟调用 get_thread.py --thread-id THREAD_ID --run-id RUN_ID --after-seq SEQUENCE 进行轮询
+4. 检查 messages：
   - 当任务还在创作中：
     - 将过程创作信息展示给用户，继续轮询
   - 当任务完成（run 结束）：
@@ -110,16 +111,16 @@ python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir
       → 回到步骤 2 继续轮询（可能多轮，直到不再意图确认）
     - 如果 content 中包含产物 URL：
       → 信息展示 → 下载产物 → 结果展示
-4. 自动下载：download_results.py --urls URL1 URL2 URL3 --output-dir 输出目录 --prefix 有意义的前缀
-5. 向用户展示：过程中的创作信息，以及下载后的本地文件列表
+5. 自动下载：download_results.py --urls URL1 URL2 URL3 --output-dir 输出目录 --prefix 有意义的前缀
+6. 向用户展示：过程中的创作信息，以及下载后的本地文件列表
 ```
 
 ### 场景 2：用户提供图片/视频要求编辑修改（如"参考这个视频做一个新的"）
 
 ```
 1. upload_file.py /path/to/video.mp4  →  拿到 asset_id
-2. submit_run.py --message "参考这个视频做一个新的" --asset-ids asset_id
-3. 后续同场景 1 的步骤 2-5
+2. submit_run.py --message "参考这个视频做一个新的" --asset-ids asset_id  →  拿到 thread_id、run_id、web_thread_link
+3. 后续同场景 1 的步骤 2-6
 ```
 
 用户给了文件路径 + 编辑指令 = 先上传文件，再把编辑指令和 所有asset_id 一起发送。
@@ -130,15 +131,15 @@ python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir
 1. upload_file.py /path/to/ref1.png  →  拿到 asset_id1
 2. upload_file.py /path/to/ref2.mp4  →  拿到 asset_id2
 3. 直到所有文件上传完成，拿到所有 asset_id
-4. submit_run.py --message "根据参考图、视频生成xxx" --asset-ids asset_id1 asset_id2, ...
-5. 后续同场景 1 的步骤 2-5
+4. submit_run.py --message "根据参考图、视频生成xxx" --asset-ids asset_id1 asset_id2, ...  →  拿到 thread_id、run_id、web_thread_link
+5. 后续同场景 1 的步骤 2-6
 ```
 
 ### 场景 4：在已有会话中追加新需求
 
 ```
-1. submit_run.py --message "新的描述" --thread-id THREAD_ID
-2. 后续同场景 1 的步骤 2-5
+1. submit_run.py --message "新的描述" --thread-id THREAD_ID  →  拿到 thread_id、run_id、web_thread_link
+2. 后续同场景 1 的步骤 2-6
 ```
 
 ### 轮询策略
@@ -155,7 +156,8 @@ python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir
 ```json
 {
   "thread_id": "90f05e0c-...",
-  "run_id": "abc123-..."
+  "run_id": "abc123-...",
+  "web_thread_link": "https://xyq.jianying.com/..."
 }
 ```
 
@@ -200,6 +202,7 @@ python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir
 
 ## 向用户展示内容
 
+- 任务提交后：立即将 `web_thread_link` 展示给用户，方便用户直接打开浏览器查看任务页面
 - 任务在创作中：
   - 展示过程中的创作信息等，继续轮询
 - 任务完成（run 结束）：
@@ -231,7 +234,7 @@ python3 {baseDir}/scripts/download_results.py --urls URL1 URL2 URL3 --output-dir
 → upload_file.py /path/to/ref1.png →  拿到 asset_id1
 → upload_file.py /path/to/ref2.png →  拿到 asset_id2
 → upload_file.py /path/to/ref3.png →  拿到 asset_id3
-→ submit_run.py --message "根据参考图、视频生成xxx" --asset-ids asset_id1 asset_id2, asset_id3
+→ submit_run.py --message "根据参考图、视频生成xxx" --asset-ids asset_id1 asset_id2, asset_id3  →  拿到 web_thread_link，立即展示给用户
 → 轮询 ─┬─ 意图确认 → 用户确认 → 使用 thread_id 重新提交 → 继续轮询
         └─ 无意图确认 → 信息展示 → 下载产物 → 结果展示
 ```

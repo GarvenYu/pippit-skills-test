@@ -57,6 +57,7 @@ def main():
         asset_ids=args.asset_ids if args.asset_ids else None
     )
     run_data = data.get("run", {})
+    web_thread_link = data.get("web_thread_link", "")
     thread_id = run_data.get("thread_id", "")
     run_id = run_data.get("run_id", "")
 
@@ -67,7 +68,7 @@ def main():
         print("错误：未返回 run_id", file=sys.stderr)
         sys.exit(1)
 
-    out = {"thread_id": thread_id, "run_id": run_id}
+    out = {"thread_id": thread_id, "run_id": run_id, "web_thread_link": web_thread_link}
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
 
