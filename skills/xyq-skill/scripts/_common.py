@@ -22,9 +22,7 @@ if not ACCESS_KEY:
 def _headers():
     return {
         "Authorization": f"Bearer {ACCESS_KEY}",
-        "Content-Type": "application/json",
-        "x-tt-env": "ppe_self_testin_rabq7v",
-        "x-use-ppe": 1,
+        "Content-Type": "application/json"
     }
 
 
